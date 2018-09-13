@@ -8,6 +8,7 @@ package com.aaralk.demo.oauth.servlets;
 import com.aaralk.demo.oauth.MyCredentialsStore;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URLEncoder;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -61,8 +62,17 @@ public class OAuth extends HttpServlet {
             throws ServletException, IOException {
         //processRequest(request, response);
         
-        String redirectUrl = "http://localhost:8080/Demo-OAuth/oauthredirect";
-        String authorizationUrl = String.format("https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=%s&state=12345&redirect_uri=%s&scope=https://www.googleapis.com/auth/drive", MyCredentialsStore.CLIENT_ID, redirectUrl);
+        String scope = URLEncoder.encode("https://www.googleapis.com/auth/drive", "UTF-8");
+        String redirectUrl = URLEncoder.encode("http://localhost:8080/Demo-OAuth/oauth2callback", "UTF-8");
+        String authorizationUrl = String.format("https://accounts.google.com/o/oauth2/v2/auth?"
+                + "scope=%s&"
+                + "access_type=offline&"
+                + "include_granted_scopes=true&"
+                + "state=12345&"
+                + "redirect_uri=%s&"
+                + "response_type=code&"
+                + "client_id=%s", 
+                scope, redirectUrl, MyCredentialsStore.CLIENT_ID);
                 
         response.sendRedirect(authorizationUrl);
     }

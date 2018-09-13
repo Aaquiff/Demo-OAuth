@@ -10,7 +10,7 @@ package com.aaralk.demo.oauth;
  * @author aaralk
  */
 public class MyCredentialsStore {
-    public static String CLIENT_ID = "262313658293-s68omf953q1vc7j2tnsfp52rt3l25s8a.apps.googleusercontent.com";
-    public static String CLIENT_SECRET = "B7_CK9LsZd5lfYJ8L0ezjJbE";
+    public static String CLIENT_ID = "204895665902-vq29807duqgavu8j55dvdgop44eeo9dn.apps.googleusercontent.com";
+    public static String CLIENT_SECRET = "oPZqFHyA69ocrP51HAac-K7J";
     
 }
