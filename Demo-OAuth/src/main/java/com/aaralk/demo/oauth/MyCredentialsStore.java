@@ -5,6 +5,8 @@
  */
 package com.aaralk.demo.oauth;
 
+import java.util.HashMap;
+
 /**
  *
  * @author aaralk
@@ -12,5 +14,7 @@ package com.aaralk.demo.oauth;
 public class MyCredentialsStore {
     public static String CLIENT_ID = "204895665902-vq29807duqgavu8j55dvdgop44eeo9dn.apps.googleusercontent.com";
     public static String CLIENT_SECRET = "oPZqFHyA69ocrP51HAac-K7J";
+    
+    public static HashMap<String, String> TokenStore = new HashMap<>();
     
 }

@@ -17,6 +17,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -44,21 +45,76 @@ public class OAuth2Callback extends HttpServlet {
             throws ServletException, IOException {
                 
         String code = request.getParameter("code");
-        String token = getToken(code);
+        String token = exchangeCodeForToken(code);
+        if(token != null)
+        {
+            String sessionId = UUID.randomUUID().toString();
+            MyCredentialsStore.TokenStore.put(sessionId, token);
+            
+            response.addHeader("Set-Cookie", "SESSIONID="+ sessionId + ";");
+        }
+        String res = SampleRequest(token);
+        response.sendRedirect("http://localhost:8080/Demo-OAuth");
+        
+//        String x = String.format("https://www.googleapis.com/plus/v1/people/me?key=%s", token);
+//        response.sendRedirect(x);
     }
     
-    private static String getToken(String code) throws RuntimeException{  
+    private String SampleRequest(String token) {
+        String profileUrl = "https://www.googleapis.com/plus/v1/people/me";
+        
+        StringBuilder strBuf = new StringBuilder();  
+        HttpURLConnection conn=null;
+        BufferedReader reader=null;
+        try {  
+            URL url = new URL(profileUrl);  
+            conn = (HttpURLConnection)url.openConnection();  
+            conn.setDoOutput( true );
+            conn.setInstanceFollowRedirects( false );
+            conn.setRequestMethod( "GET" );
+            conn.setRequestProperty("Host", "www.googleapis.com");
+            conn.setRequestProperty("Authorization", String.format("Bearer %s", token));
+            
+            conn.connect();
+            
+            if (conn.getResponseCode() != 200) {
+                throw new RuntimeException("HTTP GET Request Failed with Error code : "
+                              + conn.getResponseCode());
+            }
+            
+            //Read the content from the defined connection
+            //Using IO Stream with Buffer raise highly the efficiency of IO
+	        reader = new BufferedReader(new InputStreamReader(conn.getInputStream(),"utf-8"));
+            String output = null;  
+            while ((output = reader.readLine()) != null)  
+                strBuf.append(output);  
+        }catch(MalformedURLException e) {  
+            e.printStackTrace();   
+        }catch(IOException e){  
+            e.printStackTrace();   
+        }
+        finally
+        {
+            if(reader!=null)
+            {
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if(conn!=null)
+            {
+                conn.disconnect();
+            }
+            return strBuf.toString();
+        }
+    }
+    
+    private String exchangeCodeForToken(String code) throws RuntimeException{  
         String redirectUrl = "http://localhost:8080/Demo-OAuth/oauth2callback";
         //define a variable to store the weather api url and set beijing as it's default value
         String codeUrl = String.format("https://www.googleapis.com/oauth2/v4/token");
-  
-//        try {
-//            if(cityName!=null && cityName!="")
-//                baiduUrl = baseBaiduUrl+URLEncoder.encode(cityName, "utf-8");                    
-//        } catch (UnsupportedEncodingException e1) {               
-//            e1.printStackTrace();                     
-//        }  
-
         StringBuilder strBuf = new StringBuilder();  
         
         HttpURLConnection conn=null;
@@ -76,7 +132,6 @@ public class OAuth2Callback extends HttpServlet {
             byte[] postData       = urlParameters.getBytes( StandardCharsets.UTF_8 );
             int    postDataLength = postData.length;
             
-            //Declare the connection to weather api url
             URL url = new URL(codeUrl);  
             conn = (HttpURLConnection)url.openConnection();  
             conn.setDoOutput( true );
@@ -125,10 +180,10 @@ public class OAuth2Callback extends HttpServlet {
             }
         }
 
-        String x = strBuf.toString();
-        x = x.substring(x.indexOf("\"access_token\":") + 17);
-        x = x.substring(0, x.indexOf("\""));
-        return x;  
+        String token = strBuf.toString();
+        token = token.substring(token.indexOf("\"access_token\":") + 17);
+        token = token.substring(0, token.indexOf("\""));
+        return token;  
     }
 
     /**
