@@ -8,7 +8,12 @@ package com.aaralk.demo.oauth.servlets;
 import com.aaralk.demo.oauth.MyCredentialsStore;
 import com.aaralk.demo.oauth.core.Utility;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.MultipartConfig;
 import javax.servlet.annotation.WebServlet;
@@ -16,6 +21,8 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
+import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -52,7 +59,8 @@ public class FileServlet extends HttpServlet {
         if(sessionCookie != null) {
             String token = MyCredentialsStore.TokenStore.get(sessionCookie.getValue());
             if(token != null) {
-                uploadFileToDrive(token);
+                //uploadFileToDrive(token);
+                getFile(request, response, token);
                 response.setStatus(200);
             }
         
@@ -66,32 +74,73 @@ public class FileServlet extends HttpServlet {
 
     }
     
-    private void uploadFileToDrive(String token) throws IOException {
-        String fileName = "C:\\Users\\aaralk\\OneDrive - IFS\\Documents\\SLIIT\\Secure Software Development\\Assignment 2\\IT15048738.xml";
-        String message = "This is a multipart post";
-        File file = new File(fileName);
-        
-        HttpClient client = new DefaultHttpClient();
-        HttpPost post = new HttpPost("https://www.googleapis.com/upload/drive/v3/files?uploadType=media");
-        
-        post.setHeader("Host", "www.googleapis.com");
-        post.setHeader("Authorization", String.format("Bearer %s", token));
-//        post.setHeader("Content-Type", "multipart/related");
-        post.setHeader("Content-Type", "text/plain");
-//        post.setHeader("Content-Length", Integer.toString(message.length()));
-        
-//        InputStream inputStream = new FileInputStream(zipFileName);
-//        FileServlet file = new FileServlet(imageFileName);
-        
-        MultipartEntityBuilder builder = MultipartEntityBuilder.create();         
-        builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
-        builder.addBinaryBody("upfile", file, ContentType.DEFAULT_BINARY, "IT15048738.xml");
-        builder.addTextBody("text", message, ContentType.DEFAULT_BINARY);
-        
-        HttpEntity entity = builder.build();
-        post.setEntity(entity);
-        HttpResponse response = client.execute(post);
-        System.out.println(response);
+    private void getFile(HttpServletRequest request, HttpServletResponse response, String token) throws IOException, ServletException {
+        response.setContentType("text/html;charset=UTF-8");
+
+        final Part filePart = request.getPart("multiPartServlet");
+        final String fileName = getFileName(filePart);
+
+        OutputStream out = null;
+        InputStream filecontent = null;
+        final PrintWriter writer = response.getWriter();
+
+        try {
+            filecontent = filePart.getInputStream();
+
+            String result = IOUtils.toString(filecontent, StandardCharsets.UTF_8);
+
+            HttpClient client = new DefaultHttpClient();
+            HttpPost post = new HttpPost("https://www.googleapis.com/upload/drive/v3/files?uploadType=media");
+
+            post.setHeader("Host", "www.googleapis.com");
+            post.setHeader("Authorization", String.format("Bearer %s", token));
+            post.setHeader("Content-Type", "application/xml");
+
+            MultipartEntityBuilder builder = MultipartEntityBuilder.create()
+                    .setMode(HttpMultipartMode.RFC6532)
+                    .setContentType(ContentType.MULTIPART_FORM_DATA)
+                    .addBinaryBody("upfile", filecontent, ContentType.DEFAULT_BINARY, fileName);
+
+            HttpEntity entity = builder.build();
+            post.setEntity(entity);
+            HttpResponse res = client.execute(post);
+            System.out.println(res);
+
+            /*int read = 0;
+            final byte[] bytes = new byte[1024];
+
+            while ((read = filecontent.read(bytes)) != -1) {
+                out.write(bytes, 0, read);
+            }*/
+            writer.println("New file " + fileName + " created at ");
+        } catch (FileNotFoundException fne) {
+            writer.println("You either did not specify a file to upload or are "
+                    + "trying to upload a file to a protected or nonexistent "
+                    + "location.");
+            writer.println("<br/> ERROR: " + fne.getMessage());
+
+        } finally {
+            if (out != null) {
+                out.close();
+            }
+            if (filecontent != null) {
+                filecontent.close();
+            }
+            if (writer != null) {
+                writer.close();
+            }
+        }
+    }
+
+    private String getFileName(final Part part) {
+        final String partHeader = part.getHeader("content-disposition");
+        for (String content : part.getHeader("content-disposition").split(";")) {
+            if (content.trim().startsWith("filename")) {
+                return content.substring(
+                        content.indexOf('=') + 1).trim().replace("\"", "");
+            }
+        }
+        return null;
     }
     
 }
